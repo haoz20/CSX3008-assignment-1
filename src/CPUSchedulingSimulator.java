@@ -88,11 +88,11 @@ public class CPUSchedulingSimulator {
                 break;
             case 3:
                 System.out.println();
-
+                priorityScheduling();
                 break;
             case 4:
                 System.out.println();
-
+                roundRobinScheduling();
                 break;
             default:
                 System.out.println("Invalid choice. Please select a valid algorithm.");
@@ -184,7 +184,7 @@ public class CPUSchedulingSimulator {
             // if switching to a new process, close previous segment
             if (lastPid != -1 && pid != lastPid) {
                 int segEnd = currentTime - 1; // inclusive
-                segments.add(new int[]{ lastPid, segmentStart, segEnd });
+                segments.add(new int[]{lastPid, segmentStart, segEnd});
                 segmentStart = currentTime;
             } else if (lastPid == -1) {
                 segmentStart = currentTime;
@@ -205,7 +205,7 @@ public class CPUSchedulingSimulator {
         // close last segment
         if (lastPid != -1) {
             int segEnd = currentTime - 1;
-            segments.add(new int[]{ lastPid, segmentStart, segEnd });
+            segments.add(new int[]{lastPid, segmentStart, segEnd});
         }
 
         // Print Gantt chart in requested format: p{pid} ({duration}) | ...
@@ -233,12 +233,253 @@ public class CPUSchedulingSimulator {
         System.out.println("The Average Process Waiting Time = " + (totalWaitingTime / n) + " ms.\n");
     }
 
+    public static void priorityScheduling() {
+        printTitle("Priority CPU Scheduling Algorithm (Preemptive)");
+        displayProcessesWithPriority();
+
+        int n = processes.size();
+        int[] remaining = new int[n];
+        int[] finish = new int[n];
+
+        for (int i = 0; i < n; i++) {
+            remaining[i] = processes.get(i).getBurstTime();
+        }
+
+        int currentTime = 0;
+        int completed = 0;
+
+        System.out.println("\nGantt Chart <with starting time is zero>:\n");
+        System.out.print("| ");
+
+        int lastIndex = -1;
+        int segmentStart = 0;
+
+        while (completed < n) {
+            int bestIndex = -1;
+
+            // pick highest priority among arrived processes (lowest priority number)
+            for (int i = 0; i < n; i++) {
+                MyProcess p = processes.get(i);
+
+                if (p.getArrivalTime() <= currentTime && remaining[i] > 0) {
+                    if (bestIndex == -1) {
+                        bestIndex = i;
+                    } else {
+                        MyProcess best = processes.get(bestIndex);
+
+                        // smaller priority value = higher priority
+                        if (p.getPriority() < best.getPriority()) {
+                            bestIndex = i;
+                        } else if (p.getPriority() == best.getPriority()) {
+                            // tie-breaker 1: earlier arrival
+                            if (p.getArrivalTime() < best.getArrivalTime()) {
+                                bestIndex = i;
+                            } else if (p.getArrivalTime() == best.getArrivalTime()) {
+                                // tie-breaker 2: smaller PID
+                                if (p.getProcessID() < best.getProcessID()) {
+                                    bestIndex = i;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // CPU idle if nothing available
+            if (bestIndex == -1) {
+                // close previous running segment if any
+                if (lastIndex != -1) {
+                    MyProcess last = processes.get(lastIndex);
+                    System.out.print("P" + last.getProcessID() + "(" + segmentStart + "-" + currentTime + ") | ");
+                    lastIndex = -1;
+                }
+                currentTime++;
+                continue;
+            }
+
+            // if switching process, close previous segment
+            if (lastIndex != -1 && bestIndex != lastIndex) {
+                MyProcess last = processes.get(lastIndex);
+                System.out.print("P" + last.getProcessID() + "(" + segmentStart + "-" + currentTime + ") | ");
+                segmentStart = currentTime;
+            }
+
+            // if starting first segment
+            if (lastIndex == -1) {
+                segmentStart = currentTime;
+            }
+
+            // run chosen process for 1 time unit
+            remaining[bestIndex]--;
+            currentTime++;
+            lastIndex = bestIndex;
+
+            // if finished now
+            if (remaining[bestIndex] == 0) {
+                finish[bestIndex] = currentTime; // end time (exclusive)
+                completed++;
+            }
+        }
+
+        // close last segment
+        if (lastIndex != -1) {
+            MyProcess last = processes.get(lastIndex);
+            System.out.print("P" + last.getProcessID() + "(" + segmentStart + "-" + currentTime + ") | ");
+        }
+
+        System.out.println("\n");
+
+        // Waiting time: WT = Finish - Arrival - Burst
+        float totalWT = 0;
+        for (int i = 0; i < n; i++) {
+            MyProcess p = processes.get(i);
+            int wt = finish[i] - p.getArrivalTime() - p.getBurstTime();
+            p.setWaitingTime(wt);
+            totalWT += wt;
+        }
+
+        // Print waiting times (same style as your screenshot)
+        for (MyProcess p : processes) {
+            System.out.println("Waiting time of process, P" + p.getProcessID() + " = " + p.getWaitingTime() + " ms.");
+        }
+
+        System.out.println();
+        System.out.println("The Average Process Waiting Time = " + (totalWT / n) + " ms.\n");
+    }
+
+    public static void roundRobinScheduling() {
+        printTitle("Round Robin CPU Scheduling Algorithm");
+        displayProcessesWithoutPriority();
+
+        System.out.print("\nInput Time Quantum: ");
+        int tq = sc.nextInt();
+        if (tq <= 0) {
+            System.out.println("Time Quantum must be > 0");
+            return;
+        }
+
+        System.out.println("\nTime Quantum = " + tq);
+
+        int n = processes.size();
+        int[] remaining = new int[n];
+        int[] finish = new int[n];
+
+        for (int i = 0; i < n; i++) {
+            remaining[i] = processes.get(i).getBurstTime();
+        }
+
+        // indices sorted by arrival time (then PID)
+        List<Integer> order = new ArrayList<>();
+        for (int i = 0; i < n; i++) order.add(i);
+        order.sort(Comparator
+                .comparingInt((Integer idx) -> processes.get(idx).getArrivalTime())
+                .thenComparingInt(idx -> processes.get(idx).getProcessID()));
+
+        Queue<Integer> q = new ArrayDeque<>();
+        List<Segment> segments = new ArrayList<>();
+
+        int currentTime = 0;
+        int completed = 0;
+        int nextArr = 0;
+
+        // start by adding all processes that arrive at time 0 (or earliest time)
+        if (n > 0) {
+            currentTime = Math.min(0, processes.get(order.get(0)).getArrivalTime());
+        }
+
+        while (completed < n) {
+
+            // enqueue all arrived processes
+            while (nextArr < n && processes.get(order.get(nextArr)).getArrivalTime() <= currentTime) {
+                q.add(order.get(nextArr));
+                nextArr++;
+            }
+
+            // if queue is empty, jump to next arrival (CPU idle)
+            if (q.isEmpty()) {
+                if (nextArr < n) {
+                    currentTime = processes.get(order.get(nextArr)).getArrivalTime();
+                    continue;
+                }
+                break;
+            }
+
+            int idx = q.poll();
+            MyProcess p = processes.get(idx);
+
+            int run = Math.min(tq, remaining[idx]);
+
+            // record gantt segment in (duration) format
+            addSegment(segments, p.getProcessID(), run);
+
+            // run it
+            remaining[idx] -= run;
+            currentTime += run;
+
+            // enqueue processes that arrived during this time slice
+            while (nextArr < n && processes.get(order.get(nextArr)).getArrivalTime() <= currentTime) {
+                q.add(order.get(nextArr));
+                nextArr++;
+            }
+
+            // if not finished, put back to queue
+            if (remaining[idx] > 0) {
+                q.add(idx);
+            } else {
+                finish[idx] = currentTime; // finish time (exclusive)
+                completed++;
+            }
+        }
+
+        // Print gantt chart like your screenshot
+        System.out.println("\nThe Gantt Chart:");
+        System.out.print("|");
+        for (Segment s : segments) {
+            System.out.print(" P" + s.pid + "(" + s.duration + ") |");
+        }
+        System.out.println("\n");
+
+        // Waiting Time = Finish - Arrival - Burst
+        float totalWT = 0;
+        System.out.println("Process Waiting Time:");
+        for (int i = 0; i < n; i++) {
+            MyProcess p = processes.get(i);
+            int wt = finish[i] - p.getArrivalTime() - p.getBurstTime();
+            p.setWaitingTime(wt);
+            totalWT += wt;
+            System.out.println("P" + p.getProcessID() + " waiting time = " + wt + " ms.");
+        }
+
+        System.out.println();
+        System.out.println("The Average Process Waiting Time = " + (totalWT / n) + " ms.\n");
+    }
+
+    // Put this inside CPUSchedulingSimulator (outside methods)
+    static class Segment {
+        int pid;
+        int duration;
+        Segment(int pid, int duration) {
+            this.pid = pid;
+            this.duration = duration;
+        }
+
+    }
+
+    private static void addSegment(List<Segment> segs, int pid, int dur) {
+        if (dur <= 0) return;
+        if (!segs.isEmpty() && segs.get(segs.size() - 1).pid == pid) {
+            segs.get(segs.size() - 1).duration += dur; // merge consecutive same PID
+        } else {
+            segs.add(new Segment(pid, dur));
+        }
+    }
+
 
 
     public static void printTitle(String title) {
-    System.out.println("=====================================");
-    System.out.println("\t" + title);
-    System.out.println("\t===========================");
-}
+        System.out.println("=====================================");
+        System.out.println("\t" + title);
+        System.out.println("\t===========================");
+    }
 
 }
