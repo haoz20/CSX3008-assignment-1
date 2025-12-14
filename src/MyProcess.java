@@ -1,11 +1,11 @@
-public class Process {
+public class MyProcess {
     private int processID;
     private int arrivalTime;
     private int burstTime;
     private int priority;
     private int waitingTime;
 
-    public Process(int processID, int burstTime, int priority, int arrivalTime) {
+    public MyProcess(int processID, int burstTime, int priority, int arrivalTime) {
         this.processID = processID;
         this.burstTime = burstTime;
         this.priority = priority;
