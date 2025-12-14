@@ -1,7 +1,7 @@
 import java.util.*;
 
 public class CPUSchedulingSimulator {
-    Scanner sc = new Scanner(System.in);
+    private static final Scanner sc = new Scanner(System.in);
 
     public static void main(String[] args) {
         simulateScheduling();
@@ -10,12 +10,20 @@ public class CPUSchedulingSimulator {
     public static void simulateScheduling() {
         System.out.println("\t\tCPU SCHEDULING");
         System.out.println("\t\t=============");
+
         System.out.println();
+
         System.out.println("Input the number of processes <max 15>: ");
+        int n = sc.nextInt();
+
         System.out.println();
 
-
+        System.out.println("Enter R to generate random Burst time and Priority or Press any key: ");
+        char choice = sc.next().charAt(0);
     }
 
+    public static void generateRandomProcesses(int n) {
+
+    }
 
 }
