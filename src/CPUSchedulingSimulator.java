@@ -24,7 +24,7 @@ public class CPUSchedulingSimulator {
         char choice = sc.next().charAt(0);
 
         generateRandomProcesses(n);
-
+        selectSchedulingAlgorithm();
     }
 
     public static void generateRandomProcesses(int n) {
@@ -41,10 +41,10 @@ public class CPUSchedulingSimulator {
             MyProcess process = new MyProcess(i+1, burstTime, priority, i);
             processes.add(process);
         }
-        displayProcesses();
+        displayProcessesWithPriority();
     }
 
-    public static void displayProcesses() {
+    public static void displayProcessesWithPriority() {
         System.out.println("""
         
         Process\tCreation_time\tBurst_time\tPriority
@@ -53,11 +53,21 @@ public class CPUSchedulingSimulator {
             System.out.printf("p%d\t\t\t%d\t\t\t\t%d\t\t\t%d\n", process.getProcessID(), process.getArrivalTime(),
                     process.getBurstTime(), process.getPriority());
         }
-        System.out.println("==========================================");
-        selectSchedulingAlgorithm();
+    }
+
+    public static void displayProcessesWithoutPriority() {
+        System.out.println("""
+        
+        Process\tCreation_time\tBurst_time
+        -------\t-------------\t----------""");
+        for (MyProcess process : processes) {
+            System.out.printf("p%d\t\t\t%d\t\t\t\t%d\n", process.getProcessID(), process.getArrivalTime(),
+                    process.getBurstTime());
+        }
     }
 
     public static void selectSchedulingAlgorithm() {
+        System.out.println("==========================================");
         System.out.println("\tCPU Scheduling Algorithms");
         System.out.println("\t=========================");
         System.out.println("""
@@ -70,6 +80,7 @@ public class CPUSchedulingSimulator {
 
         switch (algorithmChoice) {
             case 1:
+                fcfsScheduling();
                 break;
             case 2:
                 System.out.println();
@@ -87,14 +98,42 @@ public class CPUSchedulingSimulator {
                 System.out.println("Invalid choice. Please select a valid algorithm.");
                 break;
         }
+        continueOrExit();
+    }
+
+    public static void continueOrExit() {
+        System.out.print("Press Y to continue or any key to EXIT from the simulation: ");
+        char continueChoice = sc.next().charAt(0);
+        if (continueChoice == 'Y' || continueChoice == 'y') {
+            processes.clear();
+            simulateScheduling();
+        } else {
+            System.out.println("Exiting the CPU Scheduling Simulator. Goodbye!");
+        }
     }
 
     public static void fcfsScheduling() {
         printTitle("FCFS CPU Scheduling Algorithm");
+        displayProcessesWithoutPriority();
+        System.out.println("Gantt Chart <with starting time is zero>:\n");
+        int currentTime = 0;
+        float totalWaitingTime = 0;
 
-
-
-
+        for (MyProcess process : processes) {
+            int start = currentTime;
+            int end = currentTime + process.getBurstTime() - 1;
+            System.out.print("| p" + process.getProcessID() + "(" + start + "-" + end + ")");
+            process.setWaitingTime(currentTime - process.getArrivalTime());
+            currentTime += process.getBurstTime();
+            totalWaitingTime += process.getWaitingTime();
+        }
+        System.out.println("\n");
+        totalWaitingTime /= processes.size();
+        for (MyProcess process : processes) {
+            System.out.println("Waiting time of process, P" + process.getProcessID() + " = " + process.getWaitingTime());
+        }
+        System.out.println();
+        System.out.println("The Average Process Waiting Time = " + totalWaitingTime + " ms.\n");
     }
 
     public static void printTitle(String title) {
