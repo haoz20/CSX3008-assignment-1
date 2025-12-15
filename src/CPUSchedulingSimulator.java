@@ -22,9 +22,37 @@ public class CPUSchedulingSimulator {
 
         System.out.print("Enter R to generate random Burst time and Priority or Press any key: ");
         char choice = sc.next().charAt(0);
+        if (choice == 'R' || choice == 'r') {
+            generateRandomProcesses(n);
+            selectSchedulingAlgorithm();
+        } else {
+            inputProcesses(n);
+            selectSchedulingAlgorithm();
+        }
 
-        generateRandomProcesses(n);
-        selectSchedulingAlgorithm();
+
+    }
+
+    public static void inputProcesses(int n) {
+        Random rand = new Random();
+        List<Integer> priorities = new ArrayList<>();
+        for (int i = 1; i <= n; i++) {
+            priorities.add(i);
+        }
+        Collections.shuffle(priorities);
+
+        for (int i = 0; i < n; i++) {
+            System.out.println("For P " + (i + 1) + ": ");
+            System.out.print("Input Arrival Time: ");
+            int arrivalTime = sc.nextInt();
+
+            System.out.print("Input Burst Time: ");
+            int burstTime = sc.nextInt();
+            System.out.println();
+            MyProcess process = new MyProcess(i+1, burstTime, priorities.get(i), arrivalTime);
+            processes.add(process);
+        }
+        displayProcessesWithPriority();
     }
 
     public static void generateRandomProcesses(int n) {
@@ -105,10 +133,31 @@ public class CPUSchedulingSimulator {
         System.out.print("Press Y to continue or any key to EXIT from the simulation: ");
         char continueChoice = sc.next().charAt(0);
         if (continueChoice == 'Y' || continueChoice == 'y') {
-            processes.clear();
-            simulateScheduling();
+            System.out.print("""
+                    
+                    Your Choice:
+                    1. Run another CPU Scheduling Simulation with same processes
+                    2. Run another CPU Scheduling Simulation with new processes
+                    3. EXIT
+                    """);
+            int choice = sc.nextInt();
+            switch (choice) {
+                case 1:
+                    selectSchedulingAlgorithm();
+                    break;
+                case 2:
+                    processes.clear();
+                    simulateScheduling();
+                    break;
+                case 3:
+                    System.out.println("Exiting the simulation. Goodbye!");
+                    break;
+                default:
+                    System.out.println("Invalid choice. Exiting the simulation. Goodbye!");
+                    break;
+            }
         } else {
-            System.out.println("Exiting the CPU Scheduling Simulator. Goodbye!");
+            System.out.println("Exiting the simulation. Goodbye!");
         }
     }
 
